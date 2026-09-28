@@ -3,18 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vox Style AI Studio</title>
+    <title>Vox Style Studio</title>
     <style>
         body { font-family: 'Arial Black', sans-serif; background: #0f172a; color: #fff; margin: 0; padding: 20px; text-align: center; }
         .container { max-width: 500px; margin: 0 auto; background: #1e293b; padding: 20px; border-radius: 12px; border: 1px solid #334155; }
         h1 { color: #facc15; font-size: 22px; text-transform: uppercase; margin-bottom: 20px; }
         .input-group { text-align: left; margin-bottom: 15px; }
-        label { font-size: 12px; color: #94a3b8; display: block; margin-bottom: 5px; }
-        input[type="file"], input[type="text"] { width: 100%; padding: 10px; background: #0f172a; border: 1px solid #475569; color: #fff; border-radius: 6px; box-sizing: border-box; }
-        #video-canvas { width: 100%; height: 280px; background: #000; border-radius: 8px; margin-top: 15px; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 2px solid #facc15; }
-        .subtitle-box { background: #facc15; color: #000; padding: 6px 14px; font-size: 20px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; display: inline-block; box-shadow: 4px 4px 0px #000; transition: all 0.1s ease; }
-        button { width: 100%; background: #facc15; color: #000; padding: 12px; border: none; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-top: 10px; text-transform: uppercase; }
+        label { font-size: 12px; color: #94a3b8; font-family: sans-serif; display: block; margin-bottom: 5px; }
+        input[type="file"] { width: 100%; padding: 10px; background: #0f172a; border: 1px solid #475569; color: #fff; border-radius: 6px; box-sizing: border-box; }
+        #video-canvas { width: 100%; height: 280px; background: #000; border-radius: 8px; margin-top: 15px; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 2px solid #facc15; padding: 15px; box-sizing: border-box; }
+        .subtitle-box { background: #facc15; color: #000; padding: 8px 16px; font-size: 18px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; display: inline-block; box-shadow: 4px 4px 0px #000; max-width: 90%; word-wrap: break-word; }
+        button { width: 100%; background: #facc15; color: #000; padding: 12px; border: none; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-top: 15px; text-transform: uppercase; }
         audio { width: 100%; margin-top: 15px; }
+        #status { font-family: sans-serif; color: #38bdf8; font-size: 13px; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -23,21 +24,23 @@
     <h1>Vox AI Studio</h1>
     
     <div class="input-group">
-        <label>1. VOICE OVER (.MP3)</label>
+        <label>1. ElevenLabs Voiceover (.mp3):</label>
         <input type="file" id="audioInput" accept="audio/*">
     </div>
 
     <div class="input-group">
-        <label>2. SUBTITLES (.SRT)</label>
+        <label>2. Subtitles (.srt):</label>
         <input type="file" id="srtInput" accept=".srt">
     </div>
 
+    <div id="status">Upload both Audio and SRT file</div>
+
     <div id="video-canvas">
-        <div class="subtitle-box" id="subText">VOX STYLE CAPTION</div>
+        <div class="subtitle-box" id="subText" style="display:none;">VOX CAPTION</div>
     </div>
 
-    <audio id="audioPlayer" controls></audio>
-    <button onclick="startSync()">PLAY & SYNC PREVIEW</button>
+    <audio id="audioPlayer" controls style="display:none;"></audio>
+    <button onclick="startSync()">Play & Preview Sync</button>
 </div>
 
 <script>
@@ -45,6 +48,7 @@ let subtitles = [];
 
 document.getElementById('srtInput').addEventListener('change', function(e) {
     const file = e.target.files[0];
+    if(!file) return;
     const reader = new FileReader();
     reader.onload = function(event) {
         parseSRT(event.target.result);
@@ -54,23 +58,30 @@ document.getElementById('srtInput').addEventListener('change', function(e) {
 
 document.getElementById('audioInput').addEventListener('change', function(e) {
     const file = e.target.files[0];
-    document.getElementById('audioPlayer').src = URL.createObjectURL(file);
+    if(!file) return;
+    const player = document.getElementById('audioPlayer');
+    player.src = URL.createObjectURL(file);
+    player.style.display = 'block';
+    checkReady();
 });
 
 function parseSRT(data) {
     subtitles = [];
-    const blocks = data.split('\n\n');
+    const blocks = data.replace(/\r/g, '').split('\n\n');
     blocks.forEach(block => {
         const lines = block.split('\n');
         if (lines.length >= 3) {
             const time = lines[1].split(' --> ');
-            const start = timeToSeconds(time[0]);
-            const end = timeToSeconds(time[1]);
-            const text = lines.slice(2).join(' ');
-            subtitles.push({ start, end, text });
+            if (time.length === 2) {
+                const start = timeToSeconds(time[0]);
+                const end = timeToSeconds(time[1]);
+                const text = lines.slice(2).join(' ');
+                subtitles.push({ start, end, text });
+            }
         }
     });
-    alert('Subtitles Loaded Successfully!');
+    document.getElementById('status').innerText = 'Subtitles Loaded (' + subtitles.length + ' lines)';
+    checkReady();
 }
 
 function timeToSeconds(timeStr) {
@@ -79,9 +90,20 @@ function timeToSeconds(timeStr) {
     return parseFloat(p[0]) * 3600 + parseFloat(p[1]) * 60 + parseFloat(p[2]);
 }
 
+function checkReady() {
+    const audioLoaded = document.getElementById('audioPlayer').src !== "";
+    if(audioLoaded && subtitles.length > 0) {
+        document.getElementById('status').innerText = 'Ready! Click Play to start preview.';
+    }
+}
+
 function startSync() {
     const audio = document.getElementById('audioPlayer');
     const subBox = document.getElementById('subText');
+    if(!audio.src) {
+        alert('Please upload audio file first');
+        return;
+    }
     audio.play();
 
     audio.ontimeupdate = () => {
