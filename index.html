@@ -3,26 +3,99 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Documentary Studio</title>
+    <title>Vox Style AI Studio</title>
     <style>
-        body { font-family: system-ui, sans-serif; background: #0f172a; color: #fff; padding: 20px; text-align: center; }
-        .card { background: #1e293b; padding: 25px; border-radius: 12px; max-width: 400px; margin: 40px auto; border: 1px solid #334155; }
-        input, button { width: 100%; padding: 12px; margin: 10px 0; border-radius: 6px; border: none; box-sizing: border-box; }
-        input { background: #334155; color: #fff; }
-        button { background: #facc15; color: #000; font-weight: bold; cursor: pointer; font-size: 16px; }
-        h2 { color: #facc15; margin-bottom: 20px; }
+        body { font-family: 'Arial Black', sans-serif; background: #0f172a; color: #fff; margin: 0; padding: 20px; text-align: center; }
+        .container { max-width: 500px; margin: 0 auto; background: #1e293b; padding: 20px; border-radius: 12px; border: 1px solid #334155; }
+        h1 { color: #facc15; font-size: 22px; text-transform: uppercase; margin-bottom: 20px; }
+        .input-group { text-align: left; margin-bottom: 15px; }
+        label { font-size: 12px; color: #94a3b8; display: block; margin-bottom: 5px; }
+        input[type="file"], input[type="text"] { width: 100%; padding: 10px; background: #0f172a; border: 1px solid #475569; color: #fff; border-radius: 6px; box-sizing: border-box; }
+        #video-canvas { width: 100%; height: 280px; background: #000; border-radius: 8px; margin-top: 15px; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 2px solid #facc15; }
+        .subtitle-box { background: #facc15; color: #000; padding: 6px 14px; font-size: 20px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; display: inline-block; box-shadow: 4px 4px 0px #000; transition: all 0.1s ease; }
+        button { width: 100%; background: #facc15; color: #000; padding: 12px; border: none; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-top: 10px; text-transform: uppercase; }
+        audio { width: 100%; margin-top: 15px; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h2>Vox-Style Studio</h2>
-        <label style="display:block; text-align:left; font-size:14px;">1. ElevenLabs Voiceover (.mp3):</label>
-        <input type="file" id="audio" accept="audio/*">
-        
-        <label style="display:block; text-align:left; font-size:14px; margin-top:10px;">2. Subtitles File (.srt):</label>
-        <input type="file" id="srt" accept=".srt">
 
-        <button onclick="alert('Vox Sync Engine Initialized!')">Generate Documentary</button>
+<div class="container">
+    <h1>Vox AI Studio</h1>
+    
+    <div class="input-group">
+        <label>1. VOICE OVER (.MP3)</label>
+        <input type="file" id="audioInput" accept="audio/*">
     </div>
+
+    <div class="input-group">
+        <label>2. SUBTITLES (.SRT)</label>
+        <input type="file" id="srtInput" accept=".srt">
+    </div>
+
+    <div id="video-canvas">
+        <div class="subtitle-box" id="subText">VOX STYLE CAPTION</div>
+    </div>
+
+    <audio id="audioPlayer" controls></audio>
+    <button onclick="startSync()">PLAY & SYNC PREVIEW</button>
+</div>
+
+<script>
+let subtitles = [];
+
+document.getElementById('srtInput').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    const reader = new FileReader();
+    reader.onload = function(event) {
+        parseSRT(event.target.result);
+    };
+    reader.readAsText(file);
+});
+
+document.getElementById('audioInput').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    document.getElementById('audioPlayer').src = URL.createObjectURL(file);
+});
+
+function parseSRT(data) {
+    subtitles = [];
+    const blocks = data.split('\n\n');
+    blocks.forEach(block => {
+        const lines = block.split('\n');
+        if (lines.length >= 3) {
+            const time = lines[1].split(' --> ');
+            const start = timeToSeconds(time[0]);
+            const end = timeToSeconds(time[1]);
+            const text = lines.slice(2).join(' ');
+            subtitles.push({ start, end, text });
+        }
+    });
+    alert('Subtitles Loaded Successfully!');
+}
+
+function timeToSeconds(timeStr) {
+    if(!timeStr) return 0;
+    const p = timeStr.trim().replace(',', '.').split(':');
+    return parseFloat(p[0]) * 3600 + parseFloat(p[1]) * 60 + parseFloat(p[2]);
+}
+
+function startSync() {
+    const audio = document.getElementById('audioPlayer');
+    const subBox = document.getElementById('subText');
+    audio.play();
+
+    audio.ontimeupdate = () => {
+        const currentTime = audio.currentTime;
+        const currentSub = subtitles.find(s => currentTime >= s.start && currentTime <= s.end);
+        if (currentSub) {
+            subBox.innerText = currentSub.text;
+            subBox.style.display = 'inline-block';
+        } else {
+            subBox.style.display = 'none';
+        }
+    };
+}
+</script>
+
 </body>
 </html>
